@@ -1,6 +1,8 @@
 const Discord = require('discord.js');
 const Listing = require('./../modules/Listing');
 const fs = require('fs')
+const settings = require('./../settings.json');
+const owner = settings.owner
 
 module.exports.run = async (bot, message, args) => {
     let snipeChannel = message.channel;
@@ -69,16 +71,22 @@ module.exports.run = async (bot, message, args) => {
 
     setTimeout(async () => {
         editLast3 = await message.channel.send({embed: last3});
+
+        message.channel.overwritePermissions(message.guild.defaultRole, {
+            SEND_MESSAGES: true
+        }).catch((err) => {
+            console.log(err);
+        })
     }, 10);
 
-    const collector = snipeChannel.createMessageCollector(filter, {max: 200, maxMatches: 200, time: 180000});
+    const collector = snipeChannel.createMessageCollector(filter, {time: 180000});
 
     collector.on('collect', m => {
 
         console.log(`Collected ${m.content} | ${m.author.username}`);
 
-        if (validation(allowedRoles.roles,m.member.roles.array())){
-            if (m.content === "!start"){
+        if (validation(allowedRoles.roles,m.member.roles.array()) || m.memberid === owner){
+            if (m.content === "!start" || m.content === "!stop"){
                 collector.stop();
                 console.log("Collector stopped");
                 return;
@@ -132,13 +140,23 @@ module.exports.run = async (bot, message, args) => {
     });
 
     collector.on('end', collected => {
-        console.log(`cp;;ected ${collected.size} items`);
-    });
+        console.log(`Collected ${collected.size} items`);
+    
+        let endMessage = new Discord.RichEmbed()
+            .setTitle("No more codes accepted at this time")
+            .setDescription("Good luck and have fun in your game!")
+            .setColor("#ff0000");
+    
+            message.channel.send({embed: endMessage});
+            snipeChannel.overwritePermissions(
+                scrimmers,
+                { "SEND_MESSAGES": false}
+            )
+        }).catch((err) => {
+            console.log(err);
+        });
 
-}
-
-
-
+    }
 module.exports.help = {
     name: "start"
 }
